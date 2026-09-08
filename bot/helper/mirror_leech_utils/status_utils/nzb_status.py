@@ -40,8 +40,11 @@ async def get_download(nzo_id, old_info=None):
                 if slot["status"] == "Verifying":
                     parts = slot["action_line"].split("Verifying: ")[-1].split("/")
                     if len(parts) > 1:
-                        percentage = round(
-                            (int(float(parts[0])) / int(float(parts[1]))) * 100, 2
+                        total = int(float(parts[1]))
+                        percentage = (
+                            round(int(float(parts[0])) / total * 100, 2)
+                            if total
+                            else 0
                         )
                         old_info["percentage"] = percentage
                 elif slot["status"] == "Repairing":
@@ -59,8 +62,11 @@ async def get_download(nzo_id, old_info=None):
                     if len(action) > 2:
                         parts = action[0].split("/")
                         if len(parts) > 1:
-                            old_info["percentage"] = round(
-                                (int(float(parts[0])) / int(float(parts[1]))) * 100, 2
+                            total = int(float(parts[1]))
+                            old_info["percentage"] = (
+                                round((int(float(parts[0])) / total) * 100, 2)
+                                if total
+                                else 0
                             )
                             old_info["timeleft"] = action[2]
                 old_info["status"] = slot["status"]

@@ -165,8 +165,14 @@ def _run_update(upstream_repo, upstream_branch, version):
 
 
 def _update_packages():
-    scall("uv pip install -U -r requirements.txt", shell=True)
-    _LOGGER.info("Successfully Updated all the Packages!")
+    result = scall("uv pip install -U -r requirements.txt", shell=True)
+    if result == 0:
+        _LOGGER.info("Successfully Updated all the Packages!")
+    else:
+        _LOGGER.error(
+            "Package update failed with exit code %s; continuing with installed packages",
+            result,
+        )
 
 
 def _cleanup():

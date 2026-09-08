@@ -36,10 +36,10 @@ class Aria2Status:
             self._download = await get_download(self._gid)
 
     def progress(self):
-        try:
-            return f"{round(int(self._download.get('completedLength', '0')) / int(self._download.get('totalLength', '0')) * 100, 2)}%"
-        except ZeroDivisionError:
+        total = int(self._download.get("totalLength", "0"))
+        if not total:
             return "0%"
+        return f"{round(int(self._download.get('completedLength', '0')) / total * 100, 2)}%"
 
     def processed_bytes(self):
         return get_readable_file_size(int(self._download.get("completedLength", "0")))

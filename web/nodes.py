@@ -89,6 +89,12 @@ def make_tree(res, tool, root_path=""):
             priority = 1
             if i["selected"] == "false":
                 priority = 0
+            length = int(i["length"])
+            progress = (
+                round((int(i["completedLength"]) / length) * 100, 5)
+                if length
+                else 0
+            )
             if len(folders) > 1:
                 previous_node = parent
                 for j in range(len(folders) - 1):
@@ -106,33 +112,21 @@ def make_tree(res, tool, root_path=""):
                         folder_id += 1
                     else:
                         previous_node = current_node
-                try:
-                    progress = round(
-                        (int(i["completedLength"]) / int(i["length"])) * 100, 5
-                    )
-                except ZeroDivisionError:
-                    progress = 0
                 TorNode(
                     folders[-1],
                     is_file=True,
                     parent=previous_node,
-                    size=int(i["length"]),
+                    size=length,
                     priority=priority,
                     file_id=i["index"],
                     progress=progress,
                 )
             else:
-                try:
-                    progress = round(
-                        (int(i["completedLength"]) / int(i["length"])) * 100, 5
-                    )
-                except ZeroDivisionError:
-                    progress = 0
                 TorNode(
                     folders[-1],
                     is_file=True,
                     parent=parent,
-                    size=int(i["length"]),
+                    size=length,
                     priority=priority,
                     file_id=i["index"],
                     progress=progress,
@@ -141,17 +135,20 @@ def make_tree(res, tool, root_path=""):
         parent = TorNode("SABNZBD+")
         priority = 1
         for i in res["files"]:
+            size_mb = float(i["mb"])
+            progress = (
+                round(((size_mb - float(i["mbleft"])) / size_mb) * 100, 5)
+                if size_mb
+                else 0
+            )
             TorNode(
                 i["filename"],
                 is_file=True,
                 parent=parent,
-                size=float(i["mb"]) * 1048576,
+                size=size_mb * 1048576,
                 priority=priority,
                 file_id=i["nzf_id"],
-                progress=round(
-                    ((float(i["mb"]) - float(i["mbleft"])) / float(i["mb"])) * 100,
-                    5,
-                ),
+                progress=progress,
             )
 
     result = create_list(parent)
