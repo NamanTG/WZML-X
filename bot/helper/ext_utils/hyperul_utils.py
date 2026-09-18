@@ -140,7 +140,7 @@ class HypertgUpload(HypertgTransfer):
             if use_hyper:
                 hyper_rply = (
                     reply_to_message_id
-                    if upload_chat_id == reply_target.chat.id
+                    if upload_chat_id == reply_target.chat.id and not thread_id
                     else None
                 )
                 sent = await self._hyper_send(
@@ -161,7 +161,7 @@ class HypertgUpload(HypertgTransfer):
             else:
                 direct_rply = (
                     reply_to_message_id
-                    if upload_chat_id == reply_target.chat.id
+                    if upload_chat_id == reply_target.chat.id and not thread_id
                     else None
                 )
                 sent = await self._direct_send(
@@ -266,7 +266,7 @@ class HypertgUpload(HypertgTransfer):
                 kwargs["caption"] = cap_mono
             if reply_to_message_id:
                 kwargs["reply_to_message_id"] = reply_to_message_id
-            elif thread_id:
+            if thread_id:
                 kwargs["message_thread_id"] = thread_id
 
             if key == "videos":
@@ -286,6 +286,9 @@ class HypertgUpload(HypertgTransfer):
                     kwargs["performer"] = artist
                 if title:
                     kwargs["title"] = title
+                if thumb:
+                    kwargs["thumb"] = thumb
+            elif key == "documents":
                 if thumb:
                     kwargs["thumb"] = thumb
 
@@ -332,7 +335,7 @@ class HypertgUpload(HypertgTransfer):
             kwargs["caption"] = cap_mono
         if reply_to_message_id:
             kwargs["reply_to_message_id"] = reply_to_message_id
-        elif thread_id:
+        if thread_id:
             kwargs["message_thread_id"] = thread_id
 
         if key == "videos":
@@ -354,7 +357,7 @@ class HypertgUpload(HypertgTransfer):
                 kwargs["performer"] = artist
             if title:
                 kwargs["title"] = title
-        else:
+        elif key == "documents":
             if thumb:
                 kwargs["thumb"] = thumb
 

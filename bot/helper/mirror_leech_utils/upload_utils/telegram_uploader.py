@@ -1,4 +1,4 @@
-from asyncio import ensure_future, gather, sleep
+from asyncio import create_task, ensure_future, gather, sleep
 from logging import getLogger
 from os import path as ospath, walk
 from re import match as re_match, sub as re_sub
@@ -330,6 +330,111 @@ class TelegramUploader:
                 else:
                     LOGGER.error(f"Failed To Send in BotPM:\n{err_msg}")
 
+    async def _resolve_src_message(self, chat_id, msg_id):
+        """Return the message via the main bot. The main bot can't read a
+        helper's message inside a forum topic, but bots can see each other
+        in General. So have the uploading helper (the only one that can
+        read its own message) copy it to General (same chat, no thread),
+        resolve it there, and clean up. No user session involved."""
+        try:
+            m = await TgClient.bot.get_messages(
+                chat_id=chat_id, message_ids=msg_id
+            )
+        except Exception:
+            m = None
+        if m is not None and not getattr(m, "empty", False):
+            return m
+        uploader = None
+        for h in (TgClient.helper_bots or {}).values():
+            try:
+                probe = await h.get_messages(chat_id=chat_id, message_ids=msg_id)
+            except Exception:
+                continue
+            if probe is not None and not getattr(probe, "empty", False):
+                uploader = h
+                break
+        if uploader is None:
+            return None
+        try:
+            staged = await uploader.copy_message(
+                chat_id=chat_id,
+                from_chat_id=chat_id,
+                message_id=msg_id,
+                disable_notification=True,
+            )
+        except Exception as e:
+            LOGGER.error(f"Failed to stage helper file in General: {e}")
+            return None
+        if staged is None or getattr(staged, "empty", False):
+            return None
+        try:
+            resolved = await TgClient.bot.get_messages(
+                chat_id=chat_id, message_ids=staged.id
+            )
+        except Exception as e:
+            LOGGER.error(f"Failed to resolve General-staged file: {e}")
+            resolved = None
+        create_task(self._drop_staged(uploader, chat_id, staged.id))
+        if resolved is None or getattr(resolved, "empty", False):
+            return None
+        return resolved
+
+    @staticmethod
+    async def _drop_staged(uploader, chat_id, msg_id):
+        try:
+            await uploader.delete_messages(chat_id=chat_id, message_ids=msg_id)
+        except Exception:
+            try:
+                await TgClient.bot.delete_messages(
+                    chat_id=chat_id, message_ids=msg_id
+                )
+            except Exception as e:
+                LOGGER.warning(f"Staged General cleanup fail: {e}")
+
+    async def _send_media_to(
+        self, msg, dest_chat_id, thread_id=None, reply_to_message_id=None
+    ):
+        kwargs = {"chat_id": dest_chat_id, "disable_notification": True}
+        if thread_id:
+            kwargs["message_thread_id"] = thread_id
+        if reply_to_message_id:
+            kwargs["reply_parameters"] = ReplyParameters(
+                message_id=reply_to_message_id
+            )
+        caption = msg.caption or ""
+        if getattr(msg, "caption_entities", None):
+            kwargs["caption_entities"] = msg.caption_entities
+        if getattr(msg, "video", None):
+            cover = getattr(getattr(msg.video, "video_cover", None), "file_id", None)
+            thumb = getattr(getattr(msg.video, "thumb", None), "file_id", None)
+            return await TgClient.bot.send_video(
+                video=msg.video.file_id,
+                caption=caption,
+                video_cover=cover,
+                thumb=thumb,
+                **kwargs,
+            )
+        if getattr(msg, "document", None):
+            thumb = getattr(getattr(msg.document, "thumb", None), "file_id", None)
+            return await TgClient.bot.send_document(
+                document=msg.document.file_id, caption=caption, thumb=thumb, **kwargs
+            )
+        if getattr(msg, "audio", None):
+            thumb = getattr(getattr(msg.audio, "thumb", None), "file_id", None)
+            return await TgClient.bot.send_audio(
+                audio=msg.audio.file_id, caption=caption, thumb=thumb, **kwargs
+            )
+        if getattr(msg, "photo", None):
+            return await TgClient.bot.send_photo(
+                photo=msg.photo.file_id, caption=caption, **kwargs
+            )
+        if getattr(msg, "animation", None):
+            thumb = getattr(getattr(msg.animation, "thumb", None), "file_id", None)
+            return await TgClient.bot.send_animation(
+                animation=msg.animation.file_id, caption=caption, thumb=thumb, **kwargs
+            )
+        return None
+
     async def _sequence_copies(self, src_chat):
         for entry in self._upload_seq:
             if entry is None:
@@ -384,15 +489,15 @@ class TelegramUploader:
                     )
                     continue
             if self._bot_pm:
+                pm_msg_id = self._listener.pm_msg.id if self._listener.pm_msg else None
+                sent = None
                 try:
-                    await _call_with_flood_retry(
+                    sent = await _call_with_flood_retry(
                         TgClient.bot.copy_message,
                         chat_id=self._listener.user_id,
                         from_chat_id=copy_from_chat,
                         message_id=copy_from_msg,
-                        reply_to_message_id=(
-                            self._listener.pm_msg.id if self._listener.pm_msg else None
-                        ),
+                        reply_to_message_id=pm_msg_id,
                     )
                 except Exception as err:
                     if not self._listener.is_cancelled:
@@ -403,6 +508,18 @@ class TelegramUploader:
                             )
                         else:
                             LOGGER.error(f"Failed To Send in BotPM:\n{err_msg}")
+                if sent is None:
+                    resolved = await self._resolve_src_message(
+                        copy_from_chat, copy_from_msg
+                    )
+                    if resolved is not None:
+                        try:
+                            await self._send_media_to(
+                                resolved, self._listener.user_id, None, pm_msg_id
+                            )
+                        except Exception as err:
+                            if not self._listener.is_cancelled:
+                                LOGGER.error(f"Failed To Send in BotPM:\n{err}")
             extras = [
                 (self._listener.cmd_up_dest, self._listener.cmd_thread_id),
                 *getattr(self._listener, "leech_dests", ()),
@@ -413,13 +530,19 @@ class TelegramUploader:
                     continue
                 done.add((dest, thread_id))
                 try:
-                    await _call_with_flood_retry(
+                    sent = await _call_with_flood_retry(
                         TgClient.bot.copy_message,
                         chat_id=dest,
                         from_chat_id=copy_from_chat,
                         message_id=copy_from_msg,
                         message_thread_id=thread_id,
                     )
+                    if sent is None:
+                        resolved = await self._resolve_src_message(
+                            copy_from_chat, copy_from_msg
+                        )
+                        if resolved is not None:
+                            await self._send_media_to(resolved, dest, thread_id)
                 except Exception as e:
                     if not self._listener.is_cancelled:
                         LOGGER.error(f"Failed to forward to {dest}: {e}")

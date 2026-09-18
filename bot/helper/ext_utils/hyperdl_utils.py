@@ -79,6 +79,7 @@ class HypertgDownload(HypertgTransfer):
         self.message = None
         self.media = None
         self.dump_chat = None
+        self._staged = False
         self.directory = None
         self.file_name = ""
         self.file_size = 0
@@ -122,7 +123,7 @@ class HypertgDownload(HypertgTransfer):
     async def _fetch_ref_try(self, client):
         try:
             msg = await client.get_messages(self.dump_chat, self.message.id)
-            if msg is None:
+            if msg is None or getattr(msg, "empty", False):
                 LOGGER.warning(
                     "HypertgDL _fetch_ref_try: msg %s not found in %s",
                     self.message.id,
@@ -804,6 +805,7 @@ class HypertgDownload(HypertgTransfer):
                         message_id=message.id,
                         disable_notification=True,
                     )
+                    self._staged = True
                 except Exception as e:
                     LOGGER.warning(
                         f"HypertgDL copy fail: {e} (from={message.chat.id} to={dump_chat})"
@@ -833,10 +835,25 @@ class HypertgDownload(HypertgTransfer):
                     f"{(dt or datetime.now()).strftime('%Y-%m-%d_%H-%M-%S')}_"
                     f"{MsgId()}{ext}"
                 )
-            return await self.handle_download()
+            try:
+                return await self.handle_download()
+            finally:
+                if self._staged and self.message is not None:
+                    create_task(
+                        self._drop_staged(self.dump_chat, self.message.id)
+                    )
         except Exception as e:
             LOGGER.error(f"HypertgDL download_media: {e}")
             raise
+
+    @staticmethod
+    async def _drop_staged(chat_id, msg_id):
+        try:
+            await TgClient.bot.delete_messages(
+                chat_id=chat_id, message_ids=msg_id
+            )
+        except Exception as e:
+            LOGGER.warning(f"HypertgDL staged cleanup fail: {e}")
 
     @staticmethod
     def _ext(ft, mime):
