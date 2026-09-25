@@ -28,7 +28,6 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from .core.config_manager import Config
 from sabnzbdapi import SabnzbdClient
 
-getLogger("niquests").setLevel(WARNING)
 getLogger("pyrogram").setLevel(ERROR)
 getLogger("apscheduler").setLevel(ERROR)
 getLogger("pymongo").setLevel(WARNING)
@@ -73,6 +72,7 @@ var_list = [
     "BASE_URL",
     "UPSTREAM_REPO",
     "UPSTREAM_BRANCH",
+    "UPDATE_PKGS",
 ]
 auth_chats = {}
 excluded_extensions = ["aria2", "!qB"]

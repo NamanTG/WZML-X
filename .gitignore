@@ -6,7 +6,10 @@ rclone.conf
 .netrc
 log.txt
 rlog.txt
+tunnel_url.txt
+config.env
 cfg.zip
+*.zip
 accounts/*
 thumbnails/*
 rclone/*

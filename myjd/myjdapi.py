@@ -1,6 +1,5 @@
 from json import dumps, loads, JSONDecodeError
-from niquests import AsyncSession
-from functools import wraps
+from aiohttp import ClientSession, ClientTimeout
 from asyncio import sleep
 
 from .exception import (
@@ -710,14 +709,6 @@ class Jddevice:
         return response["data"]
 
 
-class clientSession(AsyncSession):
-    @wraps(AsyncSession.request)
-    async def request(self, method: str, url: str, **kwargs):
-        kwargs.setdefault("timeout", 3)
-        kwargs.setdefault("allow_redirects", True)
-        return await super().request(method, url, **kwargs)
-
-
 class MyJdApi:
     def __init__(self):
         self.__api_url = "http://127.0.0.1:3128"
@@ -728,14 +719,13 @@ class MyJdApi:
         if self._http_session is not None:
             return self._http_session
 
-        self._http_session = clientSession(retries=10)
-        self._http_session.verify = True
+        self._http_session = ClientSession(timeout=ClientTimeout(total=3))
 
         return self._http_session
 
     async def close(self):
         if self._http_session is not None:
-            await self._http_session.aclose()
+            await self._http_session.close()
             self._http_session = None
 
     async def request_api(self, path, params=None):
@@ -753,14 +743,14 @@ class MyJdApi:
                     headers={"Content-Type": "application/json; charset=utf-8"},
                     data=data,
                 )
-                txt = res.text
+                txt = await res.text()
             except Exception:
                 if attempt == 2:
                     return None
                 await sleep(1.2)
                 continue
 
-            if res.status_code == 200:
+            if res.status == 200:
                 try:
                     return loads(txt)
                 except JSONDecodeError as exc:

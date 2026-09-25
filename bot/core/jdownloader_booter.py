@@ -11,7 +11,6 @@ from aioshutil import rmtree
 from myjd import MyJdApi
 
 from .. import LOGGER
-from .cpu import service_cores
 from ..helper.ext_utils.bot_utils import cmd_exec, new_task
 from .config_manager import BinConfig, Config
 from .tg_client import TgClient
@@ -96,11 +95,7 @@ class JDownloader(MyJdApi):
                     break
             await rmtree("/JDownloader/update", ignore_errors=True)
             await rmtree("/JDownloader/tmp", ignore_errors=True)
-        svc_cores = service_cores()
-        if svc_cores:
-            cmd = f"taskset -c {svc_cores} cpulimit -l {Config.CPU_LIMIT} -- java -Xms256m -Xmx500m -Dsun.jnu.encoding=UTF-8 -Dfile.encoding=UTF-8 -Djava.awt.headless=true -jar /JDownloader/JDownloader.jar"
-        else:
-            cmd = f"cpulimit -l {Config.CPU_LIMIT} -- java -Xms256m -Xmx500m -Dsun.jnu.encoding=UTF-8 -Dfile.encoding=UTF-8 -Djava.awt.headless=true -jar /JDownloader/JDownloader.jar"
+        cmd = f"cpulimit -l {Config.CPU_LIMIT} -- java -Xms256m -Xmx500m -Dsun.jnu.encoding=UTF-8 -Dfile.encoding=UTF-8 -Djava.awt.headless=true -jar /JDownloader/JDownloader.jar"
         self.is_connected = True
         _, __, code = await cmd_exec(cmd, shell=True)
         self.is_connected = False

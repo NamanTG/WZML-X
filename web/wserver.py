@@ -38,7 +38,6 @@ from aioqbt.exc import AQError
 from web.nodes import extract_file_ids, make_tree
 from aiohttp import ClientSession
 
-getLogger("niquests").setLevel(WARNING)
 getLogger("aiohttp").setLevel(WARNING)
 getLogger("uvicorn").setLevel(WARNING)
 getLogger("uvicorn.access").setLevel(WARNING)

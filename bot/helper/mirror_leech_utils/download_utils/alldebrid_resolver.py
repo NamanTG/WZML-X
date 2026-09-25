@@ -2,7 +2,7 @@ from asyncio import Semaphore, gather, get_event_loop, sleep
 from re import I as re_I, match as re_match
 from urllib.parse import parse_qs, quote, urlparse
 
-from niquests import AsyncSession
+from aiohttp import ClientSession, FormData
 
 from .... import LOGGER
 from ....core.config_manager import Config
@@ -79,15 +79,21 @@ async def _call_api(method, url, params=None, data=None, files=None):
     if data is not None:
         kwargs["data"] = data
     if files is not None:
-        kwargs["files"] = files
-    async with AsyncSession(headers={"User-Agent": _USER_AGENT}) as client:
+        form = FormData()
+        for field, spec in files.items():
+            filename, payload, content_type = spec
+            form.add_field(
+                field, payload, filename=filename, content_type=content_type
+            )
+        kwargs["data"] = form
+    async with ClientSession(headers={"User-Agent": _USER_AGENT}) as client:
         try:
             response = await client.request(method, url, **kwargs)
             response.raise_for_status()
         except Exception as e:
             raise DirectDownloadLinkException(f"ERROR: AllDebrid network error: {e}")
         try:
-            payload = response.json()
+            payload = await response.json(content_type=None)
         except Exception as e:
             raise DirectDownloadLinkException(
                 f"ERROR: AllDebrid returned malformed JSON: {e}"

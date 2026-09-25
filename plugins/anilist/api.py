@@ -47,19 +47,19 @@ def cache_clear(aggressive=False):
 
 
 async def _graphql(query, variables):
-    from niquests import AsyncSession
+    from aiohttp import ClientSession
 
     try:
-        async with AsyncSession() as session:
+        async with ClientSession() as session:
             response = await session.post(
                 ANILIST_URL,
                 json={"query": query, "variables": variables},
                 timeout=TIMEOUT,
             )
-            if response.status_code != 200:
-                LOGGER.error(f"anilist: HTTP {response.status_code}")
+            if response.status != 200:
+                LOGGER.error(f"anilist: HTTP {response.status}")
                 return None
-            payload = response.json()
+            payload = await response.json(content_type=None)
     except Exception as err:
         LOGGER.error(f"anilist: {err}")
         return None

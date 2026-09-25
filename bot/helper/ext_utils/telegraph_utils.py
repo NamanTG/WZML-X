@@ -3,7 +3,7 @@ from html.parser import HTMLParser
 from json import dumps as jdumps
 from re import compile as re_compile
 
-from niquests import AsyncSession
+from aiohttp import ClientSession
 
 
 _RE_WHITESPACE = re_compile(r"(\s+)")
@@ -196,7 +196,7 @@ class Telegraph:
     def __init__(self, access_token=None, domain="graph.org"):
         self.access_token = access_token
         self.domain = domain
-        self.session = AsyncSession(
+        self.session = ClientSession(
             headers={"Content-Type": "application/x-www-form-urlencoded"}
         )
 
@@ -207,7 +207,7 @@ class Telegraph:
         resp = await self.session.post(
             f"https://api.{self.domain}/{method}/{path}", data=values
         )
-        data = resp.json()
+        data = await resp.json(content_type=None)
         if data.get("ok"):
             return data["result"]
         error = data.get("error")

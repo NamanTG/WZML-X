@@ -9,7 +9,7 @@ from sys import platform, stderr
 from time import time
 from traceback import format_exception
 
-from niquests import AsyncSession
+from aiohttp import ClientSession, ClientTimeout
 from pytz import timezone as tz_lookup
 
 from bot import LOGGER, bot_loop
@@ -153,11 +153,11 @@ async def _post_report(payload):
         if len(encoded) > 0x19000:
             encoded = gzip_compress(encoded)
             headers["Content-Encoding"] = "gzip"
-        async with AsyncSession(timeout=15) as client:
+        async with ClientSession(timeout=ClientTimeout(total=15)) as client:
             r = await client.post(CRASH_REPORT_URL, data=encoded, headers=headers)
-        if r.status_code == 200:
+        if r.status == 200:
             LOGGER.info("Crash report sent to WZML-X devs")
         else:
-            LOGGER.warning(f"Crash report failed: HTTP {r.status_code}")
+            LOGGER.warning(f"Crash report failed: HTTP {r.status}")
     except Exception as e:
         LOGGER.warning(f"Crash report failed: {e}")

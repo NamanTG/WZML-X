@@ -18,7 +18,7 @@ from re import search as re_search, escape
 from time import time
 from aioshutil import rmtree
 from langcodes import Language
-from niquests import AsyncSession
+from aiohttp import ClientSession, ClientTimeout
 
 from ... import LOGGER, DOWNLOAD_DIR
 from ...core.cpu import ffmpeg_layout
@@ -77,7 +77,7 @@ async def download_image_thumb(url):
     await makedirs(path, exist_ok=True)
 
     try:
-        async with AsyncSession(timeout=30) as client:
+        async with ClientSession(timeout=ClientTimeout(total=30)) as client:
             try:
                 head_resp = await client.head(url, allow_redirects=True)
                 ct = head_resp.headers.get("content-type", "")
@@ -88,11 +88,11 @@ async def download_image_thumb(url):
                 pass
 
             resp = await client.get(url, allow_redirects=True)
-            if resp.status_code != 200:
-                LOGGER.error(f"Failed to download thumb URL: HTTP {resp.status_code}")
+            if resp.status != 200:
+                LOGGER.error(f"Failed to download thumb URL: HTTP {resp.status}")
                 return ""
 
-            data = resp.content
+            data = await resp.read()
     except Exception as e:
         LOGGER.error(f"Error downloading thumb from URL: {e}")
         return ""

@@ -1,20 +1,12 @@
 from json import JSONDecodeError
-from functools import wraps
+from asyncio import sleep, TimeoutError as AsyncTimeoutError
 
-from niquests import AsyncSession
-from niquests.packages.urllib3 import disable_warnings
-from niquests.packages.urllib3.exceptions import InsecureRequestWarning
+from aiohttp import ClientSession, ClientTimeout, ClientError
+from urllib3 import disable_warnings
+from urllib3.exceptions import InsecureRequestWarning
 
 from .exception import APIConnectionError, APIResponseError
 from .job_functions import JobFunctions
-
-
-class SabnzbdSession(AsyncSession):
-    @wraps(AsyncSession.request)
-    async def request(self, method: str, url: str, **kwargs):
-        kwargs.setdefault("timeout", 60)
-        kwargs.setdefault("allow_redirects", True)
-        return await super().request(method, url, **kwargs)
 
 
 class SabnzbdClient(JobFunctions):
@@ -45,8 +37,7 @@ class SabnzbdClient(JobFunctions):
         if self._http_session is not None:
             return self._http_session
 
-        self._http_session = SabnzbdSession(retries=self._RETRIES)
-        self._http_session.verify = self._VERIFY_CERTIFICATE
+        self._http_session = ClientSession(timeout=ClientTimeout(total=60))
 
         return self._http_session
 
@@ -72,20 +63,21 @@ class SabnzbdClient(JobFunctions):
                     params={**self._default_params, **params},
                     **requests_kwargs,
                 )
-                response = res.json()
+                response = await res.json(content_type=None)
                 break
             except JSONDecodeError as err:
                 raise APIResponseError(
-                    f"Failed to decode response!: {res.text}"
+                    f"Failed to decode response!: {await res.text()}"
                 ) from err
-            except APIConnectionError as err:
+            except (ClientError, AsyncTimeoutError) as err:
                 if retry_count >= (retries - 1):
-                    raise err
+                    raise APIConnectionError(str(err)) from err
+                await sleep(1.2)
         if response is None:
             raise APIConnectionError("Failed to connect to API!")
         return response
 
     async def close(self):
         if self._http_session is not None:
-            await self._http_session.aclose()
+            await self._http_session.close()
             self._http_session = None

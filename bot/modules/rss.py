@@ -1,5 +1,5 @@
 from json import loads as jloads, JSONDecodeError
-from niquests import AsyncSession
+from aiohttp import ClientSession, ClientTimeout
 from pyrogram.enums import ButtonStyle
 from apscheduler.triggers.interval import IntervalTrigger
 from asyncio import Lock, sleep
@@ -250,9 +250,11 @@ async def rss_sub(_, message, pre_event):
             cmd = None
             stv = False
         try:
-            async with AsyncSession(headers=headers, timeout=60) as client:
+            async with ClientSession(
+                headers=headers, timeout=ClientTimeout(total=60)
+            ) as client:
                 res = await client.get(feed_link, allow_redirects=True)
-            html = res.text
+                html = await res.text()
             rss_d = _parse_feed(html)
             last_link = ""
             last_title = ""
@@ -465,9 +467,11 @@ async def rss_get(_, message, pre_event):
                 msg = await send_message(
                     message, f"Getting the last <b>{count}</b> item(s) from {title}"
                 )
-                async with AsyncSession(headers=headers, timeout=60) as client:
+                async with ClientSession(
+                    headers=headers, timeout=ClientTimeout(total=60)
+                ) as client:
                     res = await client.get(data["link"], allow_redirects=True)
-                html = res.text
+                    html = await res.text()
                 rss_d = _parse_feed(html)
                 item_info = ""
                 for item_num in range(count):
@@ -827,12 +831,14 @@ async def rss_monitor():
                 tries = 0
                 while True:
                     try:
-                        async with AsyncSession(
+                        async with ClientSession(
                             headers=headers,
-                            timeout=60,
+                            timeout=ClientTimeout(total=60),
                         ) as client:
-                            res = await client.get(data["link"], allow_redirects=True)
-                        html = res.text
+                            res = await client.get(
+                                data["link"], allow_redirects=True
+                            )
+                            html = await res.text()
                         break
                     except Exception:
                         tries += 1

@@ -70,15 +70,15 @@ class MyDramaListPlugin(PluginBase):
 
 
 async def _get(path):
-    from niquests import AsyncSession
+    from aiohttp import ClientSession
 
     try:
-        async with AsyncSession() as session:
+        async with ClientSession() as session:
             response = await session.get(f"{API}{path}", timeout=TIMEOUT)
-            if response.status_code != 200:
-                LOGGER.error(f"mydramalist: HTTP {response.status_code} for {path}")
+            if response.status != 200:
+                LOGGER.error(f"mydramalist: HTTP {response.status} for {path}")
                 return None
-            return response.json()
+            return await response.json(content_type=None)
     except Exception as err:
         LOGGER.error(f"mydramalist: {err}")
         return None

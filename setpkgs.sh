@@ -1,27 +1,12 @@
 #!/bin/bash
 
 ARIA2C=$1
-SERVICE_CORES=${2:-}
 CPU_LIMIT=${3:-20}
 SABNZBDPLUS=$4
 
-if [ -n "$SERVICE_CORES" ] && ! taskset -c "$SERVICE_CORES" true 2>/dev/null; then
-    echo "setpkgs: cpus $SERVICE_CORES not usable here, pinning disabled" >&2
-    SERVICE_CORES=""
-fi
-
-if [ -n "$SERVICE_CORES" ]; then
-    ARIA2_CMD="taskset -c $SERVICE_CORES $ARIA2C"
-    SAB_CMD="taskset -c $SERVICE_CORES cpulimit -l $CPU_LIMIT -- $SABNZBDPLUS"
-else
-    ARIA2_CMD="$ARIA2C"
-    SAB_CMD="cpulimit -l $CPU_LIMIT -- $SABNZBDPLUS"
-fi
-
-tracker_list=$(curl -Ns https://cdn.jsdelivr.net/gh/ngosang/trackerslist@master/trackers_all.txt | awk '$0' | tr '\n\n' ',')
-$ARIA2_CMD \
+tracker_list=$(curl -Ns --connect-timeout 5 --max-time 30 https://cdn.jsdelivr.net/gh/ngosang/trackerslist@master/trackers_all.txt 2>/dev/null | awk '$0' | tr '\n\n' ',')
+$ARIA2C \
     --daemon=true \
-    --rpc-listen-all=true \
     --enable-rpc=true \
     --rpc-max-request-size=1024M \
     --max-concurrent-downloads=1000 \
@@ -55,7 +40,6 @@ $ARIA2_CMD \
     --connect-timeout=30 \
     --timeout=30 \
     --retry-wait=5 \
-    --file-allocation=falloc \
     --disk-cache=64M \
     --check-integrity=true \
     --max-upload-limit=1K \
@@ -66,5 +50,5 @@ $ARIA2_CMD \
     --bt-tracker="[$tracker_list]"
 
 if [ -n "$SABNZBDPLUS" ]; then
-    $SAB_CMD -f configs/sabnzbd/SABnzbd.ini -s :::8070 -b 0 -d -c -l 0 --console
+    cpulimit -l $CPU_LIMIT -- $SABNZBDPLUS -f configs/sabnzbd/SABnzbd.ini -s :::8070 -b 0 -d -c -l 0 --console
 fi

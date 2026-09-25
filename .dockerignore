@@ -1,0 +1,17 @@
+.git
+.venv
+__pycache__
+*.pyc
+*.zip
+log.txt
+rlog.txt
+tunnel_url.txt
+config.env
+config.py
+token.pickle
+credentials.json
+rclone.conf
+.netrc
+downloads
+accounts
+cookies.txt

@@ -13,8 +13,8 @@ from .. import LOGGER
 from .config_manager import Config
 from .plugin_manager import MANIFEST_NAMES, PluginManifest, read_manifest
 
-DEFAULT_SLUG = "SilentDemonSD/WZML-X"
-DEFAULT_BRANCH = "wzv3-dev"
+DEFAULT_SLUG = "NamanTG/WZML-X"
+DEFAULT_BRANCH = "hk"
 INDEX_PATH = "plugins/index.json"
 MAX_ARCHIVE = 16 * 1024 * 1024
 MAX_UNPACKED = 48 * 1024 * 1024
@@ -158,18 +158,18 @@ def digest(path):
 
 
 async def download(url, dest):
-    from niquests import AsyncSession
+    from aiohttp import ClientSession
 
-    async with AsyncSession() as session:
+    async with ClientSession() as session:
         response = await session.get(url, allow_redirects=True, timeout=60)
-        if response.status_code != 200:
-            raise InstallError(f"download failed with HTTP {response.status_code}")
+        if response.status != 200:
+            raise InstallError(f"download failed with HTTP {response.status}")
         declared = response.headers.get("content-length")
         if declared and declared.isdigit() and int(declared) > MAX_ARCHIVE:
             raise InstallError(
                 f"the file is {declared} bytes, the limit is {MAX_ARCHIVE}"
             )
-        body = response.content or b""
+        body = await response.read()
         if not body:
             raise InstallError("the download was empty")
         if len(body) > MAX_ARCHIVE:
@@ -266,9 +266,9 @@ class PluginInstaller:
         seen = set()
         problems = []
         try:
-            from niquests import AsyncSession
+            from aiohttp import ClientSession
 
-            session_factory = AsyncSession
+            session_factory = ClientSession
         except Exception as err:
             self.problems = [(u, f"cannot reach the network: {err}") for u in self.index_urls()]
             self._index = []
@@ -293,14 +293,14 @@ class PluginInstaller:
             for url in self.index_urls():
                 try:
                     response = await session.get(url, allow_redirects=True, timeout=20)
-                    if response.status_code != 200:
-                        why = f"HTTP {response.status_code}"
-                        if response.status_code == 404:
+                    if response.status != 200:
+                        why = f"HTTP {response.status}"
+                        if response.status == 404:
                             why += " (no index file at that address)"
                         problems.append((url, why))
                         LOGGER.warning(f"plugin index {url} -> {why}")
                         continue
-                    payload = json_loads(response.content or b"{}")
+                    payload = json_loads(await response.read() or b"{}")
                 except Exception as err:
                     problems.append((url, f"unreadable: {err}"))
                     LOGGER.warning(f"plugin index {url} unreadable: {err}")

@@ -184,7 +184,9 @@ USENET_SERVERS = [
 
 # Update
 UPSTREAM_REPO = ""
-UPSTREAM_BRANCH = "wzv3"
+UPSTREAM_BRANCH = "hk"
+# Install/update Python packages on boot (off by default)
+UPDATE_PKGS = False
 # Leech
 LEECH_SPLIT_SIZE = 0
 AS_DOCUMENT = False

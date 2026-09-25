@@ -1,6 +1,6 @@
 from json import dumps
 
-from niquests import AsyncSession
+from aiohttp import ClientSession, ClientTimeout
 
 from .. import LOGGER
 from .config_manager import Config
@@ -52,9 +52,9 @@ class SeedrClient:
         return result
 
     async def _token_request(self, payload):
-        async with AsyncSession(timeout=30) as client:
+        async with ClientSession(timeout=ClientTimeout(total=30)) as client:
             resp = await client.post(TOKEN_URL, data=payload)
-            return resp.json()
+            return await resp.json(content_type=None)
 
     async def _refresh(self):
         if not self._refresh_token:
@@ -78,21 +78,21 @@ class SeedrClient:
         return True
 
     async def _api(self, func, payload):
-        async with AsyncSession(timeout=30) as client:
+        async with ClientSession(timeout=ClientTimeout(total=30)) as client:
             resp = await client.post(
                 RESOURCE_URL,
                 params={"access_token": self._access_token, "func": func},
                 data=payload,
             )
-            result = resp.json()
+            result = await resp.json(content_type=None)
         if result.get("error") == "expired_token" and await self._refresh():
-            async with AsyncSession(timeout=30) as client:
+            async with ClientSession(timeout=ClientTimeout(total=30)) as client:
                 resp = await client.post(
                     RESOURCE_URL,
                     params={"access_token": self._access_token, "func": func},
                     data=payload,
                 )
-                result = resp.json()
+                result = await resp.json(content_type=None)
         return result
 
     async def get_space(self):

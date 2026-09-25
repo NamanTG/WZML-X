@@ -17,7 +17,7 @@ from secrets import token_bytes
 from aiofiles import open as aiopen
 from aiofiles.os import mkdir
 from aiofiles.os import path as aiopath
-from niquests import AsyncSession
+from aiohttp import ClientSession
 from pyrogram.enums import ButtonStyle, ChatType
 from pyrogram.handlers import MessageHandler
 
@@ -342,7 +342,7 @@ def get_size_bytes(size):
 
 async def get_content_type(url):
     try:
-        async with AsyncSession() as client:
+        async with ClientSession() as client:
             response = await client.head(url, allow_redirects=True)
             return response.headers.get("Content-Type")
     except Exception:
@@ -495,13 +495,14 @@ async def download_image_url(url):
     image_name = url.split("/")[-1].split("?")[0]
     des_dir = ospath.join(path, image_name)
     try:
-        async with AsyncSession(headers={"User-Agent": "Mozilla/5.0"}) as client:
+        async with ClientSession(headers={"User-Agent": "Mozilla/5.0"}) as client:
             resp = await client.get(url, allow_redirects=True, timeout=15)
-            if resp.status_code == 200:
+            if resp.status == 200:
+                data = await resp.read()
                 async with aiopen(des_dir, "wb") as f:
-                    await f.write(resp.content)
+                    await f.write(data)
                 return des_dir
-        LOGGER.error(f"Failed to download image from {url}: status {resp.status_code}")
+        LOGGER.error(f"Failed to download image from {url}: status {resp.status}")
     except Exception as e:
         LOGGER.error(f"Failed to download image from {url}: {e}")
     return None
@@ -515,9 +516,13 @@ async def _fetch_wallpaperflare(client, query, page, seen):
     url = f"{base_url}?wallpaper={query}&width=1280&height=720&page={page}"
     try:
         resp = await client.get(url, allow_redirects=True, timeout=15)
-        if resp.status_code != 200:
+        if resp.status != 200:
             return []
-        return [m for m in img_pattern.findall(resp.text) if m not in seen]
+        return [
+            m
+            for m in img_pattern.findall(await resp.text())
+            if m not in seen
+        ]
     except Exception as e:
         LOGGER.warning(f"WallpaperFlare fetch failed [{query} p{page}]: {e}")
         return []
@@ -527,10 +532,10 @@ async def _fetch_peapix(client, country, seen):
     url = f"https://peapix.com/bing/feed?country={country}"
     try:
         resp = await client.get(url, allow_redirects=True, timeout=15)
-        if resp.status_code != 200:
-            LOGGER.warning(f"Peapix fetch failed: status {resp.status_code}")
+        if resp.status != 200:
+            LOGGER.warning(f"Peapix fetch failed: status {resp.status}")
             return []
-        data = resp.json()
+        data = await resp.json(content_type=None)
         return [
             item["fullUrl"]
             for item in data
@@ -545,12 +550,12 @@ async def _fetch_wallhaven(client, query, page, seen):
     url = f"https://wallhaven.cc/api/v1/search?q={query}&categories=111&purity=100&sorting=relevance&page={page}"
     try:
         resp = await client.get(url, allow_redirects=True, timeout=15)
-        if resp.status_code != 200:
+        if resp.status != 200:
             LOGGER.warning(
-                f"Wallhaven fetch failed [{query} p{page}]: status {resp.status_code}"
+                f"Wallhaven fetch failed [{query} p{page}]: status {resp.status}"
             )
             return []
-        data = resp.json()
+        data = await resp.json(content_type=None)
         return [
             item["path"]
             for item in data.get("data", [])
@@ -588,7 +593,7 @@ async def search_images():
     new_images = []
 
     try:
-        async with AsyncSession(
+        async with ClientSession(
             headers={"User-Agent": "Mozilla/5.0"},
         ) as client:
             if "wallpaperflare" in sources:

@@ -3,8 +3,6 @@ from hashlib import sha256
 from importlib import import_module
 from logging import ERROR, INFO, FileHandler, StreamHandler, basicConfig, getLogger
 from os import environ, path, remove
-from os.path import isdir
-from shutil import rmtree
 from subprocess import call as scall
 from subprocess import run as srun
 from sys import exit
@@ -23,6 +21,7 @@ _VAR_LIST = [
     "BASE_URL",
     "UPSTREAM_REPO",
     "UPSTREAM_BRANCH",
+    "UPDATE_PKGS",
 ]
 
 
@@ -169,15 +168,6 @@ def _update_packages():
     _LOGGER.info("Successfully Updated all the Packages!")
 
 
-def _cleanup():
-    for d in ["gen_scripts", ".github"]:
-        if isdir(d):
-            rmtree(d, ignore_errors=True)
-    for f in ["README.md", "LICENSE", "Dockerfile", "docker-compose.yml"]:
-        if path.exists(f):
-            remove(f)
-
-
 def main():
     _setup_logging()
     config_file = _load_config()
@@ -188,10 +178,11 @@ def main():
         exit(1)
     _fetch_config_from_db(config_file, _db_partition_id(bot_token.split(":", 1)[0]))
     upstream_repo = config_file.get("UPSTREAM_REPO", "").strip()
-    upstream_branch = config_file.get("UPSTREAM_BRANCH", "").strip() or "wzv3"
+    upstream_branch = config_file.get("UPSTREAM_BRANCH", "").strip() or "hk"
     _run_update(upstream_repo, upstream_branch, version)
-    _cleanup()
-    _update_packages()
+    update_pkgs = config_file.get("UPDATE_PKGS", False)
+    if str(update_pkgs).strip().lower() in ("true", "1", "yes"):
+        _update_packages()
 
 
 if __name__ == "__main__":

@@ -1,4 +1,4 @@
-from niquests import AsyncSession
+from aiohttp import ClientSession
 from html import escape
 from urllib.parse import quote
 from pyrogram.enums import ButtonStyle
@@ -32,9 +32,9 @@ async def initiate_search_tools():
     if Config.SEARCH_API_LINK:
         global SITES
         try:
-            async with AsyncSession() as client:
+            async with ClientSession() as client:
                 response = await client.get(f"{Config.SEARCH_API_LINK}/api/v1/sites")
-                data = response.json()
+                data = await response.json(content_type=None)
             SITES = {
                 str(site): str(site).capitalize() for site in data["supported_sites"]
             }
@@ -67,9 +67,9 @@ async def search(key, site, message, method):
             else:
                 api = f"{Config.SEARCH_API_LINK}/api/v1/recent?site={site}&limit={Config.SEARCH_LIMIT}"
         try:
-            async with AsyncSession() as client:
+            async with ClientSession() as client:
                 response = await client.get(api)
-                search_results = response.json()
+                search_results = await response.json(content_type=None)
             if "error" in search_results or search_results["total"] == 0:
                 await edit_message(
                     message,

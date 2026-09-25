@@ -2,7 +2,7 @@ import re
 from asyncio import sleep
 from urllib.parse import unquote
 
-from niquests import AsyncSession
+from aiohttp import ClientSession, ClientTimeout
 
 from ... import LOGGER
 from ...core.config_manager import Config
@@ -117,21 +117,21 @@ async def get_tmdb_poster_link(title, year=None, as_doc=False):
 
     for attempt in range(3):
         try:
-            async with AsyncSession(timeout=15) as client:
+            async with ClientSession(timeout=ClientTimeout(total=15)) as client:
                 resp = await client.get(TMDB_SEARCH_URL, params=params, headers=headers)
-                if resp.status_code == 401:
+                if resp.status == 401:
                     LOGGER.warning("TMDb authentication failed, check TMDB_ACCESS_TOKEN")
                     return None
-                if resp.status_code >= 500:
+                if resp.status >= 500:
                     await sleep(2)
                     continue
-                if resp.status_code != 200:
-                    LOGGER.warning(f"TMDb returned {resp.status_code} for '{title}'")
+                if resp.status != 200:
+                    LOGGER.warning(f"TMDb returned {resp.status} for '{title}'")
                     return None
 
                 results = [
                     r
-                    for r in resp.json().get("results", [])
+                    for r in (await resp.json(content_type=None)).get("results", [])
                     if r.get("media_type") != "person"
                 ]
                 if not results:
@@ -159,8 +159,10 @@ async def get_tmdb_poster_link(title, year=None, as_doc=False):
                     params=img_params,
                     headers=headers,
                 )
-                if img_resp.status_code == 200:
-                    path = _pick_image(img_resp.json(), as_doc)
+                if img_resp.status == 200:
+                    path = _pick_image(
+                        await img_resp.json(content_type=None), as_doc
+                    )
                     if path:
                         return f"{TMDB_IMAGE_URL}{path}"
 

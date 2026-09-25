@@ -159,7 +159,8 @@ class Config:
     DRIVE_CATEGORY_MODE = False
     DRIVE_CATEGORY_SA = ""
     UPSTREAM_REPO = ""
-    UPSTREAM_BRANCH = "wzv3"
+    UPSTREAM_BRANCH = "hk"
+    UPDATE_PKGS = False
     USENET_SERVERS = []
     USER_SESSION_STRING = ""
     TRANSMISSION_MODE = "both"
