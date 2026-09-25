@@ -196,11 +196,13 @@ class Telegraph:
     def __init__(self, access_token=None, domain="graph.org"):
         self.access_token = access_token
         self.domain = domain
-        self.session = ClientSession(
-            headers={"Content-Type": "application/x-www-form-urlencoded"}
-        )
+        self.session = None
 
     async def _method(self, method, values=None, path=""):
+        if self.session is None or self.session.closed:
+            self.session = ClientSession(
+                headers={"Content-Type": "application/x-www-form-urlencoded"}
+            )
         values = dict(values or {})
         if "access_token" not in values and self.access_token:
             values["access_token"] = self.access_token
