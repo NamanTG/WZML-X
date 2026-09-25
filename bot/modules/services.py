@@ -33,7 +33,7 @@ async def start(_, message):
     userid = message.from_user.id
     lang = Language()
     buttons = ButtonMaker()
-    reply_markup = buttons.build_menu(2)
+    reply_markup = None
 
     if len(message.command) > 1 and message.command[1] == "wzmlx":
         await delete_message(message)
