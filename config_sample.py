@@ -65,8 +65,8 @@ MEM_BUDGET = 0
 MEM_DEEP_STATS = False
 
 # Telegraph
-AUTHOR_NAME = "WZML-X"
-AUTHOR_URL = "https://t.me/WZML_X"
+AUTHOR_NAME = "bot"
+AUTHOR_URL = ""
 
 # Task Limits
 DIRECT_LIMIT = 0
@@ -127,7 +127,7 @@ VERIFY_TIMEOUT = 0
 LOGIN_PASS = ""
 
 # Crash Reporting
-ENABLE_TELEMETRY = True  # Send crash reports to remote worker
+ENABLE_TELEMETRY = False  # Send crash reports to remote worker
 
 # Bot Settings
 BOT_PM = False
@@ -142,7 +142,7 @@ STOP_DUPLICATE = False
 INDEX_URL = ""
 
 # YT Tools
-YT_DESP = "Uploaded to YouTube by WZML-X bot"
+YT_DESP = "Uploaded by bot"
 YT_TAGS = ["telegram", "bot", "youtube"]  # or as a comma-separated string
 YT_CATEGORY_ID = 22
 YT_PRIVACY_STATUS = "unlisted"

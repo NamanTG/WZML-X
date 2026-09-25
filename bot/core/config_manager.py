@@ -59,8 +59,8 @@ class Config:
     VIKINGFILE_FOLDER = ""
     GDRIVE_ID = ""
     GD_DESP = "Uploaded with WZ Bot"
-    AUTHOR_NAME = "WZML-X"
-    AUTHOR_URL = "https://t.me/WZML_X"
+    AUTHOR_NAME = "bot"
+    AUTHOR_URL = ""
     INSTADL_API = ""
     IMDB_TEMPLATE = ""
     IMAGES = []
@@ -165,11 +165,11 @@ class Config:
     USER_SESSION_STRING = ""
     TRANSMISSION_MODE = "both"
     USE_SERVICE_ACCOUNTS = False
-    ENABLE_TELEMETRY = True
+    ENABLE_TELEMETRY = False
     WEB_ACCESS_PASSWORD = ""
     WEB_PINCODE = True
     YT_DLP_OPTIONS = {}
-    YT_DESP = "Uploaded with WZML-X bot"
+    YT_DESP = "Uploaded by bot"
     YT_TAGS = ["telegram", "bot", "youtube"]
     YT_CATEGORY_ID = 22
     YT_PRIVACY_STATUS = "unlisted"

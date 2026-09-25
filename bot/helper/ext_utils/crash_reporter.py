@@ -17,8 +17,8 @@ from bot.core.config_manager import Config
 from bot.helper.ext_utils.bot_utils import git_info
 from bot.version import get_version
 
-CRASH_REPORT_URL = "https://telemetry.wzmlx.com/api/v1/send-crash-report"
-API_KEY = hmac_new(b"wzmlx-crash-report", Config.BOT_TOKEN.encode(), sha256).hexdigest()
+CRASH_REPORT_URL = ""
+API_KEY = hmac_new(b"crash-report", Config.BOT_TOKEN.encode(), sha256).hexdigest()
 
 
 class _LogCaptureHandler(Handler):
@@ -142,6 +142,8 @@ def _esc_html(s):
 
 
 async def _post_report(payload):
+    if not CRASH_REPORT_URL:
+        return
     try:
         recent_logs = list(_log_handler.buffer)
         if recent_logs:
@@ -156,7 +158,7 @@ async def _post_report(payload):
         async with ClientSession(timeout=ClientTimeout(total=15)) as client:
             r = await client.post(CRASH_REPORT_URL, data=encoded, headers=headers)
         if r.status == 200:
-            LOGGER.info("Crash report sent to WZML-X devs")
+            LOGGER.info("Crash report sent")
         else:
             LOGGER.warning(f"Crash report failed: HTTP {r.status}")
     except Exception as e:

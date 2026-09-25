@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://raw.githubusercontent.com/SilentDemonSD/WZML-X/wzv3-dev/plugins/index.schema.json",
-  "title": "WZML-X plugin index",
+  "$id": "https://raw.githubusercontent.com/NamanTG/WZML-X/hk/plugins/index.schema.json",
+  "title": "Plugin index",
   "description": "Describes a plugin index file. This document is the schema, not an index -- point PLUGIN_INDEXES at a file shaped like index.json instead.",
   "type": "object",
   "required": [
